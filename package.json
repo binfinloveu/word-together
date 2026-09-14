@@ -1,0 +1,11 @@
+{
+  "name": "word-together",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Database-free vocabulary classroom powered by browser-to-browser WebRTC",
+  "scripts": {
+    "start": "node server.cjs",
+    "test": "node --test tests/engine.test.cjs",
+    "check": "node --check app.js && node --check engine.js"
+  }
+}
