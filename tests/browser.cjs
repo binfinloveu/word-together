@@ -67,13 +67,17 @@ const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright');
       await alice.waitForTimeout(350);
     }
     await bob.waitForFunction(()=>snapshot.live.status==='finished');assert.equal(await bob.locator('[data-action="live-answer"]').count(),0);
+    await alice.waitForFunction(()=>snapshot.self.total===4&&snapshot.live.players[snapshot.self.id].total===3);
+    assert.equal(await alice.locator('.live-results').count(),1);
+    assert.equal(await alice.evaluate(()=>Object.keys(snapshot.live.players).length),1);
+    assert.equal(await teacher.evaluate(()=>Object.values(host.students).find(s=>s.name==='Alice').correct),4);
     console.log('PASS live groups, synchronized score, winner and all-player stop');
     await teacher.locator('[data-action="project"]').click();await teacher.screenshot({path:'artifacts/projector.png',fullPage:true});await teacher.locator('[data-action="project"]').click();
     await teacher.locator('[data-action="start-challenge"]').click();await teacher.evaluate(()=>{host.challenge.end=Date.now()-1;finishChallenge();});await alice.waitForFunction(()=>snapshot.challenge?.finished&&view==='results');
     console.log('PASS deadline results reach student');
     await teacher.reload();await teacher.locator('[data-action="resume"]').click();
     await teacher.waitForFunction(()=>peer?.open,{},{timeout:30000});
-    await alice.waitForFunction(()=>conn?.open&&snapshot?.self?.total===1,{},{timeout:30000});
+    await alice.waitForFunction(()=>conn?.open&&snapshot?.self?.total===4,{},{timeout:30000});
     await teacher.waitForFunction(()=>Object.values(host.students).filter(s=>s.online).length===2,{},{timeout:30000});
     assert.equal(await teacher.evaluate(()=>Object.keys(host.students).length),2);
     console.log('PASS host reload, saved classroom restore, automatic student reconnect');

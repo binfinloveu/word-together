@@ -65,23 +65,27 @@
   function answer(s, words, qid, value, now=Date.now()) {
     const q=s.pending;
     if(!q||q.id!==qid) return null;
-    const correct=norm(value)===norm(q.answer), record=s.words[q.wordId];
+    const correct=norm(value)===norm(q.answer);
+    recordAnswer(s,q,correct,now);s.pending=null;
+    const word=words.find(w=>w.id===q.wordId);
+    return {correct,answer:q.answer,en:word.en,zh:word.zh,score:s.words[q.wordId].score};
+  }
+  function recordAnswer(s,q,correct,now=Date.now()) {
+    const record=s.words[q.wordId];
     record.score=Math.max(0,Math.min(100,record.score+(correct?20:-10)));record.total++;
     if(!correct)record.wrong++;
     record.types.push(q.type);record.due=correct?0:s.sequence+4;
     s.sequence++;s.total++;s.correct+=Number(correct);s.streak=correct?s.streak+1:0;
     if(s.lastAnswer)s.elapsed+=Math.min(60000,Math.max(0,now-s.lastAnswer));
-    s.lastAnswer=now;s.pending=null;
+    s.lastAnswer=now;
     s.completedAt=stats(s).progress===100?(s.completedAt||now):null;
-    const word=words.find(w=>w.id===q.wordId);
-    return {correct,answer:q.answer,en:word.en,zh:word.zh,score:record.score};
   }
   const teamNames=['🍎 Apple','🍌 Banana','🍊 Orange','🍇 Grape','🥝 Kiwi','🍑 Peach','🍒 Cherry','🍋 Lemon','🥭 Mango','🫐 Berry'];
   function makeLive(students, words, count, target, direction) {
     const list=shuffle(students.filter(s=>s.online&&!s.kicked));
     if(list.length<2)throw Error('至少需要 2 位已連線學生。');
     count=Math.max(1,Math.min(list.length,10,count));
-    const game={id:uid(),status:'ready',target,direction,winner:null,teams:Array.from({length:count},(_,i)=>({id:uid(),name:teamNames[i],members:[],score:0,version:0,resets:0}))};
+    const game={id:uid(),statsVersion:1,status:'ready',target,direction,winner:null,players:Object.fromEntries(list.map(s=>[s.id,{total:0,correct:0,wrong:0}])),teams:Array.from({length:count},(_,i)=>({id:uid(),name:teamNames[i],members:[],score:0,version:0,resets:0,total:0,correct:0,wrong:0}))};
     list.forEach((s,i)=>game.teams[i%count].members.push(s.id));
     game.teams.forEach(t=>nextLive(game,t,words));return game;
   }
@@ -90,13 +94,18 @@
     const type=game.direction==='mixed'?shuffle(['zh-en','en-zh'])[0]:game.direction;
     team.question=makeQuestion(words,shuffle(words)[0],type);
   }
-  function liveAnswer(game, sid, version, value, words) {
+  function liveAnswer(game, sid, version, value, words, students) {
     if(!game||game.status!=='playing')return null;
     const team=game.teams.find(t=>t.members.includes(sid));
     if(!team||team.version!==version)return null;
     const correct=norm(value)===norm(team.question.answer);
+    if(game.statsVersion===1){
+      const personal=game.players[sid];
+      for(const result of [team,personal]){result.total++;result.correct+=Number(correct);result.wrong+=Number(!correct);}
+    }
+    if(students?.[sid])recordAnswer(students[sid],team.question,correct);
     if(correct)team.score++;else {team.score=0;team.resets++;}
-    if(team.score>=game.target){game.status='finished';game.winner=team.id;team.finishedAt=Date.now();}
+    if(team.score>=game.target){game.status='finished';game.winner=team.id;team.finishedAt=Date.now();game.endedAt=team.finishedAt;}
     nextLive(game,team,words);return {correct,teamId:team.id};
   }
   root.WordEngine={uid,shuffle,norm,parse,student,stats,rank,question,publicQuestion,answer,makeLive,liveAnswer};

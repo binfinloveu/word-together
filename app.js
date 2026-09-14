@@ -44,14 +44,15 @@ function renderCards(){const d=current();if(!d)return;const marks=read('marks-'+
   cardIndex=(cardIndex+words.length)%words.length;const w=words[cardIndex];
   app.innerHTML=`<div class="student-shell">${header('FLASHCARDS / 單字卡',d.set.title,'',button('← 學習首頁','student-home','quiet'))}${studentStats()}<div class="row spread" style="margin-bottom:18px"><span class="badge">${cardIndex+1} / ${words.length}</span><div class="row">${button(frontChinese?'正面：中文':'正面：英文','card-language','quiet')}${button(onlyWeak?'只看不熟 ✓':'只看不熟','weak-cards','quiet')}</div></div><button class="flash ${flipped?'flipped':''}" data-action="flip" aria-label="翻面：${esc(flipped?(frontChinese?w.en:w.zh):(frontChinese?w.zh:w.en))}"><div class="flash-inner"><div class="flash-face" ${flipped?'aria-hidden="true"':''}>${esc(frontChinese?w.zh:w.en)}<small>點一下，翻到另一面 ↻</small></div><div class="flash-face back" ${!flipped?'aria-hidden="true"':''}>${esc(frontChinese?w.en:w.zh)}<small>記住了嗎？再聽一次發音。</small></div></div></button><div class="row spread" style="margin:20px 0">${button('← 上一張','card-prev')}${button('🔊 發音','speak','','data-text="'+esc(w.en)+'"')}${button('下一張 →','card-next','primary')}</div><section class="panel"><div class="row spread"><div class="row">${button(marks[w.id]==='weak'?'⭐ 不熟 ✓':'⭐ 不熟','mark-weak','','data-id="'+esc(w.id)+'"')}${button(marks[w.id]==='known'?'✓ 已會 ✓':'✓ 已會','mark-known','','data-id="'+esc(w.id)+'"')}</div><div class="row">${button('⤨ 洗牌','shuffle','quiet')}${button('重新開始','restart-cards','quiet')}</div></div><p class="mini muted">卡片標記幫助複習，精熟分數仍由練習答題累積。</p></section></div>`;
 }
-function renderResults(){const d=current();if(!d)return;const result=d.challenge?.results?.[d.self.id],st=result||E.stats(d.self),weak=d.set.words.filter(w=>d.self.words[w.id].score<90);
+function renderResults(){const d=current();if(!d)return;if(d.live&&['finished','stopped'].includes(d.live.status)){renderLive();return;}const result=d.challenge?.results?.[d.self.id],st=result||E.stats(d.self),weak=d.set.words.filter(w=>d.self.words[w.id].score<90);
   app.innerHTML=`<div class="student-shell">${header('YOUR PROGRESS / 學習成果',st.mastery>=90?'🎉 挑戰成功！':'每一題，都是進步。',result?'以下是計時挑戰結束時的成績。':'繼續練習，逐步達到 90% 精熟度。',button('← 學習首頁','student-home','quiet'))}<div class="stats"><div class="stat"><span>精熟度</span><strong>${pct(st.mastery)}%</strong></div><div class="stat"><span>答對率</span><strong>${pct(st.accuracy)}%</strong></div><div class="stat"><span>已精熟</span><strong>${st.mastered} / ${st.total}</strong></div><div class="stat"><span>有效學習時間</span><strong>${time(d.self.elapsed/1000)}</strong></div></div><section class="panel"><h2>${weak.length?'再多練一點':'全部單字已精熟！'}</h2><div class="row">${weak.map(w=>`<span class="badge">${esc(w.en)} · ${d.self.words[w.id].score}%</span>`).join('')}</div><div class="row" style="margin-top:24px">${button('繼續練習','continue-learn','primary',role!=='practice'&&d.challenge?.finished?'disabled':'')}${button('匯出我的成績','export-mine')}</div>${role!=='practice'&&d.challenge?.finished?'<p class="mini muted">等待老師結束挑戰模式後，即可繼續自由練習。</p>':''}</section></div>`;
 }
 function liveHtml(game,sid,showMembers=false){if(!game)return '<div class="empty">⚡ 老師還沒開始分組，先練幾個單字吧。</div>';
+  if(['finished','stopped'].includes(game.status))return liveResultsHtml(game,sid,showMembers);
   const teams=[...game.teams].sort((a,b)=>b.score-a.score),mine=teams.find(t=>t.members.includes(sid)),winner=teams.find(t=>t.id===game.winner);
   return `${winner?`<div class="notice success"><h2>🏆 ${esc(winner.name)} Team Wins!</h2>比賽結束，恭喜所有一起努力的隊伍。</div>`:''}${game.status==='ready'?'<div class="notice">分組完成，找到你的隊友，等待老師開始比賽。</div>':''}${game.status==='stopped'?'<div class="notice">老師已結束比賽。</div>':''}${teams.map(t=>`<div class="team-card ${t.id===game.winner?'winner':''}"><div class="row spread"><strong>${esc(t.name)} Team ${t.id===mine?.id?'· 你的隊伍':''}</strong><strong>${t.score} / ${game.target}</strong></div>${progress(t.score/game.target*100)}${showMembers?`<small>${esc(t.members.map(id=>host.students[id]?.name||'同學').join('、'))}</small>`:''}${t.resets?`<small>重新出發 ${t.resets} 次，繼續一起前進。</small>`:''}</div>`).join('')}${sid&&!mine?'<p class="notice">你尚未分組，這場先替同學加油，下一場再加入！</p>':''}${mine&&game.status==='playing'?`<section class="panel question"><span class="badge">${esc(mine.name)} TEAM · 一起確認答案</span><h2>${esc(mine.question?.prompt||'等待題目')}</h2><div class="options">${(mine.question?.options||[]).map((x,i)=>button(`<b>${String.fromCharCode(65+i)}</b>${esc(x)}`,'live-answer','option','data-value="'+esc(x)+'" data-version="'+mine.version+'" '+(busy?'disabled':''))).join('')}</div>${mine.question?.type==='spell'?'<form id="live-spell-form"><label for="live-spell">英文答案</label><input id="live-spell" required maxlength="120" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="primary" style="margin-top:12px">送出答案</button></form>':''}<p class="mini muted">答對 +1，任何一人答錯則全隊歸零。先討論，再作答！</p></section>`:''}`;
 }
-function renderLive(){const d=current();app.innerHTML=`<div class="student-shell">${header('LIVE WORD BATTLE','一起答對，一起到終點。','',button('← 學習首頁','student-home','quiet'))}${studentStats()}${liveHtml(d.live,d.self.id)}</div>`;}
+function renderLive(){const d=current();app.innerHTML=`<div class="student-shell">${header('LIVE WORD BATTLE','一起答對，一起到終點。','',button('← 學習首頁','student-home','quiet'))}${d.live?.status==='playing'?liveStatsHtml(d.live,d.self.id):''}${liveHtml(d.live,d.self.id)}<h3>累積學習成果</h3>${studentStats()}</div>`;}
 function roomUrl(){const u=new URL(location.href);u.hash='join='+host.code;return u.href;}
 function renderTeacher(){
   const ids=['minutes','group-kind','groups','target','direction'];
@@ -70,7 +71,7 @@ function drawQR(){if($('#qr')&&host){try{const qr=qrcode(0,'M');qr.addData(roomU
 function render(){if(role==='teacher')return renderTeacher();if(view==='learn')return renderLearn();if(view==='flashcards')return renderCards();if(view==='results')return renderResults();if(view==='live')return renderLive();if(role==='student'||role==='practice')return renderStudent();if(view==='editor')return renderEditor();home();}
 function send(c,message){if(c?.open){try{c.send(message);return true;}catch{}}return false;}
 function persist(){clearTimeout(persistTimer);persistTimer=setTimeout(()=>{if(host)save('room',host);},300);}
-function publicLive(game,sid){if(!game)return null;return {...game,teams:game.teams.map(t=>({...t,question:t.members.includes(sid)?E.publicQuestion(t.question):null}))};}
+function publicLive(game,sid){if(!game)return null;return {...game,players:game.players?{[sid]:game.players[sid]}:undefined,teams:game.teams.map(t=>({...t,question:t.members.includes(sid)?E.publicQuestion(t.question):null}))};}
 function pack(s){const {token,pending,...self}=s;return {type:'state',now:Date.now(),set:host.set,self,board:E.rank(Object.values(host.students)),open:host.open,challenge:host.challenge?{...host.challenge,results:host.challenge.results?{[s.id]:host.challenge.results[s.id]}:undefined}:null,live:publicLive(host.live,s.id)};}
 function broadcast(){for(const [id,c]of connections){const s=host?.students[id];if(s&&!s.kicked)send(c,pack(s));}persist();}
 function changed(){clearTimeout(broadcastTimer);broadcastTimer=setTimeout(()=>{if(host){broadcast();renderTeacher();}},120);}
@@ -119,7 +120,8 @@ function handleHost(s,c,m){
     if(m.type==='answer'){
       const result=E.answer(s,host.set.words,m.questionId,m.value);reply=result?{type:'feedback',result,requestId:m.requestId}:{type:'rejected',requestId:m.requestId,message:'這題已作答，請取得下一題。'};
     }else{
-      const result=E.liveAnswer(host.live,s.id,m.version,m.value,host.set.words);reply={type:'live-result',result,requestId:m.requestId};
+      const result=E.liveAnswer(host.live,s.id,m.version,m.value,host.set.words,host.students);reply={type:'live-result',result,requestId:m.requestId};
+      if(result&&host.live.status==='finished')save('room',host);
     }
   }
   pendingRequests.set(key,reply);if(pendingRequests.size>400)pendingRequests.delete(pendingRequests.keys().next().value);
@@ -138,6 +140,7 @@ function connectStudent(){if(!peer||peer.destroyed||peer.disconnected||connectin
     if(m.type==='state'){const first=!snapshot,oldLive=snapshot?.live,oldChallenge=snapshot?.challenge;snapshot=m;skew=m.now-Date.now();joining=false;status('已連到老師 · '+joinedCode,true);save('student-'+joinedCode,{name:studentName,at:Date.now(),self:m.self,set:m.set});
       if(m.challenge?.finished&&!oldChallenge?.finished){view='results';question=null;feedback=null;}
       if(m.live?.status==='playing'&&oldLive?.status!=='playing'){view='live';busy=false;question=null;feedback=null;toast('⚡ Live 開始！快和隊友一起挑戰。');}
+      if(['finished','stopped'].includes(m.live?.status)&&oldLive?.status!==m.live.status){view='live';busy=false;question=null;feedback=null;}
       const oldTeam=oldLive?.teams.find(t=>t.members.includes(m.self.id)),newTeam=m.live?.teams.find(t=>t.members.includes(m.self.id));
       if(newTeam&&oldTeam&&newTeam.resets>oldTeam.resets)toast('💥 Oops！全隊重新出發，一起確認下一題。');
       if(first||view!=='learn'||(!$('#answer')?.matches(':focus')&&!busy))render();
@@ -159,7 +162,33 @@ function savePractice(){save('practice-'+practice.set.id,practice.student);}
 function startPractice(set){disconnect();role='practice';view='student';practice={set,student:read('practice-'+set.id,null)};if(!practice.student||!set.words.every(w=>practice.student.words[w.id]))practice.student=E.student(studentName||'練習中的你',set.words);localChallenge=null;skew=0;status('個人練習 · 本機儲存',true);renderStudent();}
 function endPracticeChallenge(){if(!localChallenge||localChallenge.finished)return;localChallenge.finished=true;localChallenge.results={[practice.student.id]:E.stats(practice.student)};view='results';renderResults();}
 function speak(text){if(!('speechSynthesis'in window))return toast('這個瀏覽器沒有語音功能。');speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='en-US';u.rate=.85;u.onerror=()=>toast('無法播放語音，請檢查裝置語音設定。');speechSynthesis.speak(u);}
-function exportRoom(){const students=Object.values(host.students).filter(s=>!s.kicked);const cell=v=>'"'+String(v).replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';const rows=[['姓名','精熟度','答對率','完成度','已精熟','總單字','有效學習秒數','挑戰精熟度','挑戰達標'],...students.map(s=>{const st=E.stats(s),r=host.challenge?.results?.[s.id];return [s.name,pct(st.mastery),pct(st.accuracy),pct(st.progress),st.mastered,st.total,Math.round(s.elapsed/1000),r?pct(r.mastery):'',r?(r.mastery>=90?'是':'否'):''];})];download('word-together-results.csv','\uFEFF'+rows.map(row=>row.map(cell).join(',')).join('\r\n'),'text/csv;charset=utf-8');}
+function exportRoom(){
+  const students=Object.values(host.students).filter(s=>!s.kicked);
+  const rows=[['姓名','精熟度','答對率','完成度','已精熟','總單字','累積作答題數','累積答對題數','有效學習秒數','挑戰精熟度','挑戰達標','本場Live作答','本場Live答對'],...students.map(s=>{
+    const st=E.stats(s),r=host.challenge?.results?.[s.id],live=host.live?.players?.[s.id];
+    return [s.name,pct(st.mastery),pct(st.accuracy),pct(st.progress),st.mastered,st.total,s.total,s.correct,Math.round(s.elapsed/1000),r?pct(r.mastery):'',r?(r.mastery>=90?'是':'否'):'',live?.total??'',live?.correct??''];
+  })];downloadCSV('word-together-results.csv',rows);
+}
+function downloadCSV(filename,rows){const cell=v=>'"'+String(v??'').replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';download(filename,'\uFEFF'+rows.map(row=>row.map(cell).join(',')).join('\r\n'),'text/csv;charset=utf-8');}
+function liveStandings(game){
+  return [...game.teams].sort((a,b)=>Number(b.id===game.winner)-Number(a.id===game.winner)||b.score-a.score||(b.correct||0)-(a.correct||0));
+}
+function liveStatsHtml(game,sid){
+  const p=game?.players?.[sid];if(!p)return '';
+  return `<div class="stats live-personal"><div class="stat"><span>本場個人作答</span><strong>${p.total} 題</strong></div><div class="stat"><span>本場個人答對</span><strong>${p.correct} 題</strong></div><div class="stat"><span>本場個人答對率</span><strong>${p.total?pct(p.correct/p.total*100)+'%':'尚未作答'}</strong></div><div class="stat"><span>本場隊伍累計答對</span><strong>${game.teams.find(t=>t.members.includes(sid))?.correct??0} 題</strong></div></div>`;
+}
+function liveResultsHtml(game,sid,teacher=false){
+  const winner=game.teams.find(t=>t.id===game.winner),teams=liveStandings(game),hasStats=game.statsVersion===1;
+  const seconds=game.startedAt&&game.endedAt?time((game.endedAt-game.startedAt)/1000):'—';
+  return `<section class="panel live-results"><div class="row spread"><h2>🏁 Live 成績</h2><span class="badge">${game.status==='stopped'?'老師結束比賽':'比賽完成'} · ${seconds}</span></div>${winner?`<div class="notice success"><h2>🏆 ${esc(winner.name)} Team Wins!</h2></div>`:''}${!hasStats?'<div class="notice">這場使用舊版計分，未記錄累計題數，無法回補。請更新後重新分組開始新場次。</div>':''}${sid?liveStatsHtml(game,sid):''}<h3>隊伍排名與成績</h3><div class="tablewrap"><table><thead><tr><th>排名</th><th>隊伍</th><th>最終進度</th><th>累計作答</th><th>累計答對</th><th>答對率</th></tr></thead><tbody>${teams.map((t,i)=>{const previous=teams[i-1],rank=previous&&t.id!==game.winner&&previous.id!==game.winner&&t.score===previous.score&&t.correct===previous.correct?'並列':i+1;return `<tr><td>${rank}</td><td>${esc(t.name)}</td><td>${t.score} / ${game.target}</td><td>${hasStats?t.total:'—'}</td><td>${hasStats?t.correct:'—'}</td><td>${hasStats&&t.total?pct(t.correct/t.total*100)+'%':'—'}</td></tr>`;}).join('')}</tbody></table></div><p class="mini muted">最終進度是最後連續答對的題數；答錯歸零不會清除累計作答。個人成績只計入自己成功送出的答案，同題由隊友先送出時不重複計分。</p>${teacher&&hasStats?`<h3>學生本場表現 · 僅老師可見</h3><div class="tablewrap"><table><thead><tr><th>姓名</th><th>隊伍</th><th>作答題數</th><th>答對题數</th><th>答對率</th></tr></thead><tbody>${Object.entries(game.players).map(([id,p])=>`<tr><td>${esc(host.students[id]?.name||'已離開同學')}</td><td>${esc(game.teams.find(t=>t.members.includes(id))?.name||'—')}</td><td>${p.total}</td><td>${p.correct}</td><td>${p.total?pct(p.correct/p.total*100)+'%':'尚未作答'}</td></tr>`).join('')}</tbody></table></div>${button('匯出 Live 成績 CSV','export-live','primary')}`:''}</section>`;
+}
+function exportLive(){
+  const game=host.live;if(!game)return;
+  const teams=liveStandings(game);
+  const rows=[['隊伍','最終進度','目標題數','隊伍累計作答','隊伍累計答對','姓名','個人作答','個人答對','個人答對率'],...teams.flatMap(t=>t.members.map(id=>{
+    const p=game.players?.[id];return [t.name,t.score,game.target,t.total??'',t.correct??'',host.students[id]?.name||'已離開同學',p?.total??'',p?.correct??'',p?.total?pct(p.correct/p.total*100)+'%':''];
+  }))];downloadCSV('word-together-live-results.csv',rows);
+}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b||b.disabled)return;const a=b.dataset.action;
   safely(()=>{
     if(a==='home'){if(role==='teacher'||role==='student'){if(!confirm('離開會中斷教室連線，確定離開？'))return;disconnect();}home();location.hash='';return;}
@@ -181,11 +210,12 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
     if(a==='start-challenge'){const minutes=Number($('#minutes').value);if(!Number.isInteger(minutes)||minutes<1||minutes>120)throw Error('請輸入 1～120 分鐘。');if(host.live?.status==='playing')throw Error('請先結束 Live 比賽。');host.challenge={id:E.uid(),end:Date.now()+minutes*60000,finished:false};Object.values(host.students).forEach(s=>s.pending=null);changed();renderTeacher();return;}
     if(a==='end-challenge'){if(host.challenge.finished)host.challenge=null;else finishChallenge();changed();renderTeacher();return;}
     if(a==='group'){if(host.live?.status==='playing'&&!confirm('重新分組會結束目前比賽，確定繼續？'))return;const mode=$('#group-kind').value,online=Object.values(host.students).filter(s=>s.online&&!s.kicked),count=mode==='count'?Number($('#groups').value):Math.ceil(online.length/(mode==='size4'?4:5)),target=Number($('#target').value);if(!Number.isInteger(count)||count<1||count>10||!Number.isInteger(target)||target<3||target>30)throw Error('組數需 1～10，目標需 3～30。');host.live=E.makeLive(online,host.set.words,count,target,$('#direction').value);changed();renderTeacher();return;}
-    if(a==='start-live'){if(host.challenge&&!host.challenge.finished)throw Error('請先結束計時挑戰，再開始 Live。');host.live.status='playing';changed();renderTeacher();return;}
-    if(a==='stop-live'){host.live.status='stopped';changed();renderTeacher();return;}
+    if(a==='start-live'){if(host.challenge&&!host.challenge.finished)throw Error('請先結束計時挑戰，再開始 Live。');host.live.status='playing';host.live.startedAt=Date.now();Object.values(host.students).forEach(s=>s.pending=null);changed();renderTeacher();return;}
+    if(a==='stop-live'){host.live.status='stopped';host.live.endedAt=Date.now();save('room',host);changed();renderTeacher();return;}
     if(a==='project'){projecting=!projecting;document.body.classList.toggle('projector',projecting);renderTeacher();return;}
     if(a==='fullscreen'){document.documentElement.requestFullscreen?.().catch(()=>toast('此瀏覽器無法開啟全螢幕。'));return;}
     if(a==='export-room')return exportRoom();
+    if(a==='export-live')return exportLive();
     if(a==='student-home'){view='student';renderStudent();return;}
     if(a==='learn'||a==='next-question')return nextQuestion();
     if(a==='continue-learn'){if(role==='practice')localChallenge=null;return nextQuestion();}

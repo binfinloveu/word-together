@@ -44,3 +44,19 @@ test('No team accepts outsiders, invalid versions, or pre-start answers',()=>{
   assert.equal(E.liveAnswer(g,'outsider',t.version,t.question.answer,words),null);
   assert.equal(E.liveAnswer(g,t.members[0],-1,t.question.answer,words),null);
 });
+test('Live cumulative counts survive resets and credit only the answering student once',()=>{
+  const words=E.parse(text),students=[E.student('Amy',words),E.student('Ben',words)],map=Object.fromEntries(students.map(s=>[s.id,s]));
+  const game=E.makeLive(students,words,1,3,'zh-en'),team=game.teams[0],s=students[0];game.status='playing';
+  const q=team.question,version=team.version;
+  E.liveAnswer(game,s.id,version,q.answer,words,map);
+  assert.equal(E.liveAnswer(game,students[1].id,version,q.answer,words,map),null);
+  assert.equal(s.total,1);assert.equal(s.correct,1);assert.equal(s.words[q.wordId].score,20);assert.equal(students[1].total,0);
+  E.liveAnswer(game,s.id,team.version,'wrong',words,map);
+  assert.equal(team.score,0);assert.equal(team.total,2);assert.equal(team.correct,1);assert.equal(team.wrong,1);
+  assert.deepEqual(game.players[s.id],{total:2,correct:1,wrong:1});
+  for(let i=0;i<3;i++)E.liveAnswer(game,s.id,team.version,team.question.answer,words,map);
+  assert.equal(game.status,'finished');assert.equal(team.total,5);assert.equal(team.correct,4);assert.equal(team.score,3);
+  assert.equal(s.total,5);assert.equal(s.correct,4);assert.ok(E.stats(s).mastery>0);
+  assert.equal(JSON.parse(JSON.stringify(game)).players[s.id].total,5);
+  E.liveAnswer(game,s.id,team.version,team.question.answer,words,map);assert.equal(s.total,5);
+});
