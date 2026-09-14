@@ -229,3 +229,15 @@ setInterval(()=>{const challenge=role==='teacher'?host?.challenge:current()?.cha
 function initial(){const match=location.hash.match(/^#join=([A-Za-z0-9]{6})$/);home();if(match){const roomCode=match[1].toUpperCase();if(studentName&&read('student-'+roomCode,null)){joinRoom(roomCode,studentName);return;}$('#code').value=roomCode;$('#name').focus();toast('輸入名字，即可加入 '+roomCode);}}
 $('.brand').addEventListener('click',e=>{e.preventDefault();if(role==='teacher'||role==='student'){toast('請先使用「離開教室」，避免誤斷線。');return;}home();location.hash='';});
 initial();
+
+// Keep music separate from frequently refreshed scoreboards so updates never restart it.
+function syncLiveMusic(){
+  const teacher=role==='teacher';
+  const playing=teacher?host?.open&&host?.live?.status==='playing':
+    role==='student'&&view==='live'&&conn?.open&&!studentClosed&&snapshot?.open&&snapshot?.live?.status==='playing';
+  liveMusic.setActive(Boolean(playing),teacher);
+}
+const musicObserver=new MutationObserver(syncLiveMusic);
+musicObserver.observe(app,{childList:true,subtree:true});
+musicObserver.observe($('#connection'),{childList:true,subtree:true});
+document.addEventListener('click',()=>queueMicrotask(syncLiveMusic));

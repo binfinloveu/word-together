@@ -19,7 +19,7 @@
 
 1. GitHub 建立 **Public** repository，例如 `word-together`。
 2. 使用 **Add file → Upload files**，把本專案檔案上傳到 repository 根目錄。不要把整個專案再包成一層資料夾，也不要直接上傳 ZIP。
-3. 最少必須有：`index.html`、`app.js`、`engine.js`、`style.css`、`favicon.svg`、`vendor/`。推薦一併上傳 README、測試與其他設定。
+3. 最少必須有：`index.html`、`app.js`、`engine.js`、`music.js`、`style.css`、`favicon.svg`、`vendor/`。推薦一併上傳 README、測試與其他設定。
 4. **Settings → Pages → Build and deployment → Source → Deploy from a branch**。
 5. 選擇 `main` 與 `/ (root)`，按 **Save**。
 6. 等 Pages 顯示網站網址：`https://你的帳號.github.io/word-together/`。
@@ -37,6 +37,7 @@ GitHub 官方說明：https://docs.github.com/en/pages/getting-started-with-gith
 | style.css | 手機、平板、電腦與投影介面 |
 | app.js | 教師、學生介面與 PeerJS 通訊 |
 | engine.js | 出題、精熟度、排序、Live 規則 |
+| music.js | Live 原創輕快配樂、播放與音量控制 |
 | vendor/peerjs.min.js | 固定版本 PeerJS 1.5.5 |
 | vendor/qrcode.js | 固定版本 qrcode-generator 1.4.4 |
 | server.cjs | 可選的本機預覽伺服器 |
@@ -88,6 +89,14 @@ PeerJS 官方文件：https://peerjs.com/client/getting-started/
 - 投影模式、全螢幕、學生改名／踢除、鎖定加入、關閉教室。
 - 老師重整後使用「恢復上次教室」，學生自動嘗試重連。
 - 老師 CSV 成績匯出、學生 JSON 成果匯出。
+
+### Live 輕快背景音樂
+
+老師按「開始比賽」後，預設播放原創 116 BPM 的輕快循環配樂。使用瀏覽器 Web Audio 合成旋律、和弦與低音，不需要下載音樂檔、網路串流或額外服務。
+
+右下角可靜音、開啟及調整音量，設定保存在該裝置。學生端預設靜音，避免全班手機一起播放；需要時可自行開啟。比分更新及切換老師投影模式不會重頭播放；比賽結束、停止、離開 Live 或學生斷線時停止。
+
+若瀏覽器阻擋自動播放，按右下角「播放音樂」即可。此配樂由各裝置自行播放，並非跨裝置同步音軌。
 
 ## 計分定義
 
