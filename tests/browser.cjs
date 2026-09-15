@@ -59,6 +59,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright');
     console.log('PASS student refresh restores original identity and progress');
     await teacher.locator('#group-kind').selectOption('count');await teacher.locator('#groups').fill('2');await teacher.locator('#target').fill('3');await teacher.locator('[data-action="group"]').click();await teacher.locator('[data-action="start-live"]').click();
     await alice.waitForFunction(()=>snapshot.live?.status==='playing'&&view==='live');await bob.waitForFunction(()=>snapshot.live?.status==='playing');
+    await alice.waitForFunction(()=>document.activeElement?.id==='live-question');
     await teacher.screenshot({path:'artifacts/teacher-live.png',fullPage:true});await alice.screenshot({path:'artifacts/student-live.png',fullPage:true});
     for(let i=0;i<3;i++){
       const answer=await teacher.evaluate(()=>{const s=Object.values(host.students).find(s=>s.name==='Alice');return host.live.teams.find(t=>t.members.includes(s.id)).question.answer;});

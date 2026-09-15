@@ -19,7 +19,7 @@
 
 1. GitHub 建立 **Public** repository，例如 `word-together`。
 2. 使用 **Add file → Upload files**，把本專案檔案上傳到 repository 根目錄。不要把整個專案再包成一層資料夾，也不要直接上傳 ZIP。
-3. 最少必須有：`index.html`、`app.js`、`engine.js`、`music.js`、`style.css`、`favicon.svg`、`vendor/`。推薦一併上傳 README、測試與其他設定。
+3. 最少必須有：`index.html`、`app.js`、`engine.js`、`music.js`、`display.html`、`display.js`、`style.css`、`favicon.svg`、`vendor/`。推薦一併上傳 README、測試與其他設定。
 4. **Settings → Pages → Build and deployment → Source → Deploy from a branch**。
 5. 選擇 `main` 與 `/ (root)`，按 **Save**。
 6. 等 Pages 顯示網站網址：`https://你的帳號.github.io/word-together/`。
@@ -38,6 +38,7 @@ GitHub 官方說明：https://docs.github.com/en/pages/getting-started-with-gith
 | app.js | 教師、學生介面與 PeerJS 通訊 |
 | engine.js | 出題、精熟度、排序、Live 規則 |
 | music.js | Live 原創輕快配樂、播放與音量控制 |
+| display.html / display.js | 獨立投影視窗，只呈現公開隊伍與排行榜 |
 | vendor/peerjs.min.js | 固定版本 PeerJS 1.5.5 |
 | vendor/qrcode.js | 固定版本 qrcode-generator 1.4.4 |
 | server.cjs | 可選的本機預覽伺服器 |
@@ -93,11 +94,25 @@ PeerJS 官方文件：https://peerjs.com/client/getting-started/
 
 ### Live 計分與賽後成績
 
+獲勝隊伍下方會顯示全隊成員姓名，老師、學生及投影畫面皆可查看。老師按開始比賽後，已連線的学生自動切換 Live 並捲到作答區，鍵盤焦點也會移至該區；斷線重連至進行中的場次同樣適用。未分組學生維持觀賽提示。
+
 每個成功被主機接受的 Live 答案，同時更新隊伍累計紀錄與實際作答學生的精熟度。隊友沒有送出這題不會一起加個人分，同版本的重複答案也不計分。
 
 答錯會把隊伍「最終進度」（連續答對題數）歸零，但不清除累計作答、累計答對及個人成績。比賽結束自動顯示 Live 成績頁；學生只收到自己的個人紀錄，老師才能看全班個人紀錄。累積學習成績與匯出 CSV 也會包含已接受的 Live 答題。
 
 舊版場次沒有記錄累計 Live 答題，不能根據剩餘隊伍分數回推。更新後請讓老師、學生重新整理，重新分組開一場新比賽；舊場次會明確顯示「未記錄」，不把缺漏紀錄當成 0 分。
+
+### 老師進度篩選與排序
+
+「學生學習進度」可搜尋姓名，篩選全部、在線、離線、精熟度達 90%、未達 90% 或尚未作答。可依加入順序、姓名、精熟度、答對率、完成度、已精熟單字數、作答題數排序，並選擇升冪或降冪。即時答題更新仍保留篩選／排序；只影響老師表格，不改變全班排行榜或匯出範圍。
+
+### 獨立投影視窗
+
+老師可選「本頁投影」或「另開投影視窗」。獨立視窗只顯示公開隊伍進度、排行榜、獲勝隊員，不顯示教師控制、全班個人作答明細或學生管理表格。老師可繼續在原視窗控班，投影視窗會自動同步。可關閉後再開、重新整理，也可按全螢幕。
+
+請使用電腦的「延伸」螢幕模式，把獨立視窗移到投影螢幕；若用視訊分享，僅分享該視窗。若電腦使用鏡像／同步顯示，另一個螢幕仍會看到相同桌面，網站本身無法改變作業系統的顯示模式。若視窗被阻擋，允許本站彈出式視窗後再按一次。
+
+獨立投影使用同源 `postMessage` 接收老師產生的公開內容，不載入 `app.js` 或讀取 localStorage。關閉老師視窗會顯示中斷狀態；老師整頁重新載入後如無法同步，請按「另開投影視窗」重新開啟。
 
 ### Live 輕快背景音樂
 
